@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Tire Pressure Control</title>
+    <style>
+        :root {
+            --neon-green: #00ff88;
+            --neon-cyan: #00f3ff;
+            --dark-bg: #0a0a0f;
+            --dark-card: #1a1a2e;
+            --base-font: 14px;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            max-width: 360px;
+            margin: 0 auto;
+            padding: 15px;
+            background: var(--dark-bg);
+            color: white;
+            min-height: 100vh;
+            font-size: var(--base-font);
+        }
+
+        .top-row {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .status-card {
+            background: var(--dark-card);
+            border-radius: 16px;
+            padding: 20px;
+            flex: 1;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .connection-controls {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: rgba(255,255,255,0.1);
+            color: var(--neon-green);
+            border: 1px solid var(--neon-green);
+            font-size: 0.9em;
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .btn-disconnect {
+            color: var(--neon-cyan);
+            border-color: var(--neon-cyan);
+        }
+
+        .gps-speed {
+            font-size: 1.3em;
+            color: var(--neon-cyan);
+            margin: 8px 0;
+            text-align: center;
+        }
+
+        .dial-container {
+            position: relative;
+            width: 160px;
+            height: 160px;
+            margin: 15px auto;
+        }
+
+        .dial {
+            width: 100%;
+            height: 100%;
+            transform: rotate(-135deg);
+        }
+
+        .dial-track {
+            fill: none;
+            stroke: rgba(255,255,255,0.1);
+            stroke-width: 6;
+        }
+
+        .dial-fill {
+            fill: none;
+            stroke: var(--neon-green);
+            stroke-width: 6;
+            stroke-linecap: round;
+            transition: stroke-dashoffset 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .target-psi {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 2em;
+            font-weight: 700;
+            color: var(--neon-green);
+            text-align: center;
+            width: 100%;
+        }
+
+        .slider-container {
+            margin: 20px 0;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            -webkit-appearance: none;
+            background: transparent;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 22px;
+            width: 22px;
+            border-radius: 50%;
+            background: var(--neon-green);
+            border: 2px solid var(--dark-bg);
+            box-shadow: 0 0 12px rgba(0,255,136,0.4);
+            margin-top: -8px;
+        }
+
+        input[type="range"]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 6px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 6px;
+        }
+
+        .psi-steps {
+            display: flex;
+            justify-content: space-between;
+            margin: 12px 0;
+            color: rgba(255,255,255,0.6);
+            font-size: 0.9em;
+        }
+
+        .timer-display {
+            font-size: 1.8em;
+            font-weight: 700;
+            margin: 8px 0;
+            text-align: center;
+            color: var(--neon-cyan);
+        }
+
+        .error-message {
+            color: #ff4444;
+            text-align: center;
+            margin: 8px 0;
+            font-size: 0.85em;
+            min-height: 18px;
+        }
+
+        .gps-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="top-row">
+        <div class="status-card">
+            <div class="gps-speed" id="speedDisplay">-- mph</div>
+            <div class="gps-controls">
+                <button class="btn" id="gpsEnableButton">📍 Enable GPS</button>
+                <div class="error-message" id="gpsError"></div>
+            </div>
+        </div>
+
+        <div class="status-card">
+            <div class="timer-display">
+                <span id="countdown">15:00</span>
+            </div>
+            <div class="timer-controls">
+                <button class="btn" id="resetButton">Reset Timer</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="status-card">
+        <div class="connection-controls">
+            <button class="btn" id="connectButton">🔗 Connect</button>
+            <button class="btn btn-disconnect" id="disconnectButton">⛔ Disconnect</button>
+        </div>
+
+        <div class="dial-container">
+            <svg class="dial" viewBox="0 0 100 100">
+                <circle class="dial-track" cx="50" cy="50" r="45"/>
+                <circle class="dial-fill" cx="50" cy="50" r="45" 
+                        stroke-dasharray="283" stroke-dashoffset="283"/>
+            </svg>
+            <div class="target-psi" id="targetPsiDisplay">--</div>
+        </div>
+
+        <div class="slider-container">
+            <input type="range" id="psiSlider" min="20" max="110" step="10" value="105" disabled>
+            <div class="psi-steps">
+                <span>20</span>
+                <span>110</span>
+            </div>
+        </div>
+
+        <button class="btn" id="setPsiButton" disabled>Set Target PSI</button>
+        <div class="error-message" id="pressureError"></div>
+    </div>
+
+    <script>
+        let bleDevice;
+        let characteristic;
+        const serviceUUID = '0000ffe0-0000-1000-8000-00805f9b34fb';
+        const characteristicUUID = '0000ffe1-0000-1000-8000-00805f9b34fb';
+
+        // System State
+        let gpsActive = false;
+        let timeLeft = 900;
+        let timer;
+        let targetPSI = 105;
+        let previousSpeed = 0;
+
+        // DOM Elements
+        const elements = {
+            slider: document.getElementById('psiSlider'),
+            setPsiButton: document.getElementById('setPsiButton'),
+            gpsEnableButton: document.getElementById('gpsEnableButton'),
+            targetPsiDisplay: document.getElementById('targetPsiDisplay'),
+            gpsError: document.getElementById('gpsError'),
+            pressureError: document.getElementById('pressureError')
+        };
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            setupEventListeners();
+            startTimer();
+            updateTargetDisplay();
+        });
+
+        function setupEventListeners() {
+            document.getElementById('connectButton').addEventListener('click', connectBLE);
+            document.getElementById('disconnectButton').addEventListener('click', disconnectBLE);
+            elements.gpsEnableButton.addEventListener('click', initGPS);
+            elements.slider.addEventListener('input', handlePressureChange);
+            document.getElementById('resetButton').addEventListener('click', resetTimer);
+            document.getElementById('setPsiButton').addEventListener('click', setPsi);
+        }
+
+        // GPS Functions
+        function initGPS() {
+            if (!navigator.geolocation) {
+                showError('GPS not supported', 'gpsError');
+                return;
+            }
+
+            navigator.geolocation.getCurrentPosition(
+                () => enableGPSControls(),
+                error => handleGpsError(error),
+                {enableHighAccuracy: true, timeout: 5000}
+            );
+        }
+
+        function enableGPSControls() {
+            gpsActive = true;
+            elements.gpsEnableButton.disabled = true;
+            elements.gpsEnableButton.textContent = '🌐 GPS Active';
+            elements.slider.disabled = false;
+            elements.setPsiButton.disabled = false;
+            startGpsTracking();
+        }
+
+        function startGpsTracking() {
+            navigator.geolocation.watchPosition(
+                position => updateSpeed(position.coords.speed),
+                error => handleGpsError(error),
+                {enableHighAccuracy: true, maximumAge: 3000}
+            );
+        }
+
+        function updateSpeed(speed) {
+            const mph = speed ? Math.round(speed * 2.23694) : 0;
+            document.getElementById('speedDisplay').textContent = `${mph} mph`;
+            
+            // Determine minimum PSI based on speed
+            let minPSI;
+            if (mph > 50) {
+                minPSI = 70;
+            } else if (mph > 35) {
+                minPSI = 50;
+            } else {
+                minPSI = 20;
+            }
+
+            // Update slider constraints
+            elements.slider.min = minPSI;
+            
+            // Auto-adjust if current target is below minimum
+            if (targetPSI < minPSI) {
+                handleAutoPressureAdjust();
+            }
+
+            // Check for threshold crossings
+            if ((previousSpeed <= 35 && mph > 35) || (previousSpeed <= 50 && mph > 50)) {
+                handleAutoPressureAdjust();
+            }
+
+            previousSpeed = mph;
+        }
+
+        function handleGpsError(error) {
+            const messages = {
+                1: 'Permission denied',
+                2: 'Position unavailable',
+                3: 'Timeout'
+            };
+            showError(`GPS: ${messages[error.code] || error.message}`, 'gpsError');
+            gpsActive = false;
+            disableGPSControls();
+        }
+
+        function disableGPSControls() {
+            elements.gpsEnableButton.disabled = false;
+            elements.gpsEnableButton.textContent = '📍 Enable GPS';
+            elements.slider.disabled = true;
+            elements.setPsiButton.disabled = true;
+        }
+
+        // Pressure Control
+        function handlePressureChange() {
+            if (!gpsActive) {
+                showError('GPS required to adjust pressure', 'pressureError');
+                elements.slider.value = targetPSI;
+                return;
+            }
+            targetPSI = this.value;
+            updateTargetDisplay();
+        }
+
+        function updateTargetDisplay() {
+            elements.targetPsiDisplay.textContent = targetPSI;
+            updateDial(targetPSI);
+        }
+
+        function setPsi() {
+            if (!gpsActive) {
+                showError('GPS required to set pressure', 'pressureError');
+                return;
+            }
+            sendCommand(`SET ${targetPSI}`);
+        }
+
+        function handleAutoPressureAdjust() {
+            targetPSI = 105;
+            elements.slider.value = 105;
+            updateTargetDisplay();
+            sendCommand('SET 105');
+            timeLeft = 900;
+            updateTimerDisplay();
+        }
+
+        // BLE Functions
+        async function connectBLE() {
+            try {
+                bleDevice = await navigator.bluetooth.requestDevice({
+                    filters: [{services: [serviceUUID]}]
+                });
+
+                const server = await bleDevice.gatt.connect();
+                const service = await server.getPrimaryService(serviceUUID);
+                characteristic = await service.getCharacteristic(characteristicUUID);
+                
+                setupNotifications();
+                updateConnectionState(true);
+                
+            } catch (error) {
+                showError(`BLE: ${error.message}`, 'pressureError');
+            }
+        }
+
+        function disconnectBLE() {
+            if (bleDevice?.gatt.connected) bleDevice.gatt.disconnect();
+            updateConnectionState(false);
+        }
+
+        function updateConnectionState(connected) {
+            document.getElementById('connectButton').disabled = connected;
+            document.getElementById('disconnectButton').disabled = !connected;
+        }
+
+        function setupNotifications() {
+            characteristic.addEventListener('characteristicvaluechanged', event => {
+                const value = new TextDecoder().decode(event.target.value);
+                const psi = value.match(/PSI:(\d+)/)?.[1] || targetPSI;
+                updateDial(psi);
+            });
+            characteristic.startNotifications();
+        }
+
+        function updateDial(psi) {
+            const progress = ((psi - 20) / 90) * 283;
+            document.querySelector('.dial-fill').style.strokeDashoffset = 283 - progress;
+        }
+
+        async function sendCommand(command) {
+            if (!characteristic) return;
+            try {
+                await characteristic.writeValue(new TextEncoder().encode(`${command}\n`));
+            } catch (error) {
+                showError(`Command failed: ${error.message}`, 'pressureError');
+            }
+        }
+
+        // Timer Functions
+        function startTimer() {
+            timer = setInterval(() => {
+                timeLeft--;
+                updateTimerDisplay();
+                if (timeLeft <= 0) handleAutoPressureAdjust();
+            }, 1000);
+        }
+
+        function resetTimer() {
+            timeLeft = 900;
+            updateTimerDisplay();
+        }
+
+        function updateTimerDisplay() {
+            const mins = Math.floor(timeLeft / 60);
+            const secs = timeLeft % 60;
+            document.getElementById('countdown').textContent = 
+                `${mins}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        function showError(message, elementId) {
+            const element = document.getElementById(elementId);
+            element.textContent = message;
+            setTimeout(() => element.textContent = '', 3000);
+        }
+    </script>
+</body>
+</html>

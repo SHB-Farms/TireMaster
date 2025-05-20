@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Tire Pressure Control</title>
+    <title>TireMaster GPS 6</title>
     <style>
         :root {
             --neon-green: #00ff88;
@@ -22,6 +22,31 @@
             color: white;
             min-height: 100vh;
             font-size: var(--base-font);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+            padding: 10px;
+            border-bottom: 2px solid var(--neon-green);
+        }
+
+        .header h1 {
+            color: var(--neon-green);
+            margin: 0;
+            font-size: 2.2em;
+            letter-spacing: 1.5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .version {
+            color: var(--neon-cyan);
+            font-size: 0.6em;
+            align-self: flex-end;
+            margin-bottom: 3px;
         }
 
         .top-row {
@@ -183,6 +208,10 @@
     </style>
 </head>
 <body>
+    <div class="header">
+        <h1>TireMaster<span class="version">v1.1</span></h1>
+    </div>
+
     <div class="top-row">
         <div class="status-card">
             <div class="gps-speed" id="speedDisplay">-- mph</div>

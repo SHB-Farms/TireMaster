@@ -112,6 +112,15 @@
             color: var(--neon-green);
             text-align: center;
             width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .max-speed-display {
+            font-size: 0.5em;
+            color: var(--neon-cyan);
+            margin-top: 4px;
         }
 
         .slider-container {
@@ -205,7 +214,10 @@
                 <circle class="dial-fill" cx="50" cy="50" r="45" 
                         stroke-dasharray="283" stroke-dashoffset="283"/>
             </svg>
-            <div class="target-psi" id="targetPsiDisplay">--</div>
+            <div class="target-psi">
+                <div id="targetPsiValue">--</div>
+                <div id="maxSpeedDisplay" class="max-speed-display">-- mph</div>
+            </div>
         </div>
 
         <div class="slider-container">
@@ -238,7 +250,8 @@
             slider: document.getElementById('psiSlider'),
             setPsiButton: document.getElementById('setPsiButton'),
             gpsEnableButton: document.getElementById('gpsEnableButton'),
-            targetPsiDisplay: document.getElementById('targetPsiDisplay'),
+            targetPsiValue: document.getElementById('targetPsiValue'),
+            maxSpeedDisplay: document.getElementById('maxSpeedDisplay'),
             gpsError: document.getElementById('gpsError'),
             pressureError: document.getElementById('pressureError')
         };
@@ -294,30 +307,21 @@
             const mph = speed ? Math.round(speed * 2.23694) : 0;
             document.getElementById('speedDisplay').textContent = `${mph} mph`;
             
-            // Determine minimum PSI based on speed
-            let minPSI;
-            if (mph > 50) {
-                minPSI = 70;
-            } else if (mph > 35) {
-                minPSI = 50;
-            } else {
-                minPSI = 20;
-            }
-
-            // Update slider constraints
-            elements.slider.min = minPSI;
-            
-            // Auto-adjust if current target is below minimum
-            if (targetPSI < minPSI) {
-                handleAutoPressureAdjust();
-            }
-
-            // Check for threshold crossings
-            if ((previousSpeed <= 35 && mph > 35) || (previousSpeed <= 50 && mph > 50)) {
+            // Check if exceeding max speed for current target PSI
+            const currentMaxSpeed = getMaxSpeed(targetPSI);
+            if (mph > currentMaxSpeed) {
                 handleAutoPressureAdjust();
             }
 
             previousSpeed = mph;
+        }
+
+        function getMaxSpeed(psi) {
+            psi = parseInt(psi, 10);
+            if (psi <= 35) return 25;
+            if (psi <= 60) return 45;
+            if (psi <= 90) return 65;
+            return 1000; // High value indicates no speed limit
         }
 
         function handleGpsError(error) {
@@ -350,8 +354,15 @@
         }
 
         function updateTargetDisplay() {
-            elements.targetPsiDisplay.textContent = targetPSI;
+            elements.targetPsiValue.textContent = targetPSI;
+            updateMaxSpeedDisplay(targetPSI);
             updateDial(targetPSI);
+        }
+
+        function updateMaxSpeedDisplay(psi) {
+            const maxSpeed = getMaxSpeed(psi);
+            elements.maxSpeedDisplay.textContent = 
+                maxSpeed >= 1000 ? "Unlimited" : `${maxSpeed} mph max`;
         }
 
         function setPsi() {

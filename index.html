@@ -209,7 +209,7 @@
 </head>
 <body>
     <div class="header">
-        <h1>TireMaster<span class="version">v1.1</span></h1>
+        <h1>TireMaster<span class="version">v1.2</span></h1>
     </div>
 
     <div class="top-row">
@@ -250,10 +250,10 @@
         </div>
 
         <div class="slider-container">
-            <input type="range" id="psiSlider" min="20" max="110" step="10" value="105" disabled>
+            <input type="range" id="psiSlider" min="15" max="105" step="5" value="105" disabled>
             <div class="psi-steps">
-                <span>20</span>
-                <span>110</span>
+                <span>15</span>
+                <span>105</span>
             </div>
         </div>
 
@@ -450,7 +450,7 @@
         }
 
         function updateDial(psi) {
-            const progress = ((psi - 20) / 90) * 283;
+            const progress = ((psi - 15) / 90) * 283;
             document.querySelector('.dial-fill').style.strokeDashoffset = 283 - progress;
         }
 
